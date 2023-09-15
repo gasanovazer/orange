@@ -1,0 +1,286 @@
+#include <Wire.h>
+#include <SSD1306Wire.h>
+#include <NTPClient.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include <DHT22.h> //DHT22
+#include <EEPROM.h>
+#include <TimeLib.h>
+
+#define FunPin 25 // Fan Pin
+#define HeatPin 26 // Heating Pin
+#define motorPin1 = 17 // Пин 1 для управления мотором с драйвером L293
+#define motorPin2 = 16 // Пин 2 для управления мотором с драйвером L293
+#define data 5 // pin DHT22 ESP32
+const int buttonPin = 14; // Пин, к которому подключена кнопка
+
+const int debounceDelay = 50; // Задержка для подавления дребезга кнопки
+const int resetButtonHoldTime = 5000; // Время удержания кнопки для сброса (10 секунд)
+// Массив, который содержит количество дней в каждом месяце
+const int daysInMonth[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+int buttonState = HIGH;
+int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+unsigned long buttonPressStartTime = 0;
+bool resetFlag = false;
+bool dateWritten = false;
+String defaultParams = "";
+String getStartDate = "";
+DHT22 dht22(data); 
+
+struct Parameters {
+    String modeName; 
+    double min_temp;
+    double max_temp;
+    int min_hum_start;
+    int min_hum_end;
+    int max_hum_start;
+    int max_hum_end;
+    int days;
+    int last_days;
+    String start_date;
+};
+
+Parameters defaultModes[] = {
+    // name | min_temp | max_temp | min_hum_start | min_hum_end | max_hum_start | max_hum_end | days | last_days  
+    {"Chicken", 36.7, 37.5, 40, 50, 65, 75, 21, 3}
+};
+
+SSD1306Wire display(0x3c, 32, 33); // OLED-дисплей с адресом 0x3c
+
+const char* ssid = "X0GAE";
+const char* password = "uD8E0-2oP";
+
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 14400; // GMT+1 (поправка на временной пояс)
+const int daylightOffset_sec = 3600; // Переход на летнее/зимнее время (поправка)
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, ntpServer, gmtOffset_sec, daylightOffset_sec);
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600); // Инициализация Serial
+  display.init(); // Инициализация OLED-дисплея
+  display.flipScreenVertically(); // Если нужно развернуть экран
+  display.clear(); // Очистка дисплея
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  int i = 25;
+  WiFi.begin(ssid, password);
+
+  pinMode(buttonPin, INPUT);
+// Save date in EEPROM
+  EEPROM.begin(sizeof(String));
+  // Записываем параметры в EEPROM только один раз при запуске
+  if (EEPROM.read(0) == 0xFF) {
+      EEPROM.put(0, defaultParams);
+      EEPROM.commit();
+  } else {
+      dateWritten = true;
+  }
+  
+  // Wi-Fi
+  display.drawString (0, 0, "Wi-Fi ");
+  while ( WiFi.status() != WL_CONNECTED ) {
+    delay ( 500 );
+    Serial.print ( "." );
+    display.drawString (i, 0, ".");
+    i+=1;
+    display.display();
+  }
+  
+  // Время
+  configTime(14400, 0, "time.windows.com"); // Используем сервер, который предоставляет текущее время и дату
+  display.drawString (0, 10, "NTP ");
+  // Ожидание получения времени от NTP-сервера
+  while (!time(nullptr)) {
+    delay(1000);
+    Serial.println("Ожидание синхронизации времени с NTP...");
+    display.drawString (i, 10, ".");
+    i+=1;
+    display.display();
+  }
+  i = 25;
+  timeClient.begin();
+  
+  display.display();
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  // timeClient.update();
+  float t = dht22.getTemperature();
+  float h = dht22.getHumidity();
+
+// Вывод времени и даты ------------------------------
+  time_t now = time(nullptr);
+  struct tm* timeInfo = localtime(&now);
+  String yearStr = "";
+  String yearShotStr = "";
+  String mouthStr = "";
+  String dayStr = "";
+  char timeString[30];
+  char dateString[30];
+  strftime(timeString, sizeof(timeString), "%H:%M:%S", timeInfo);
+  strftime(dateString, sizeof(dateString), "%Y-%m-%d", timeInfo);
+  if (String(dateString).substring(0, 4) != "1970"){
+    yearStr = String(dateString).substring(0, 4);
+    yearShotStr = String(dateString).substring(2, 4);
+    mouthStr = String(dateString).substring(5, 7);
+    dayStr = String(dateString).substring(8, 10);
+  }
+  else
+  {
+    yearStr = "load";
+    yearShotStr = "load";
+    mouthStr = "";
+    dayStr = "";
+  }
+// ------------------------------------------------------------ End
+
+// Работа с кнопкой 
+  int reading = digitalRead(buttonPin);
+  if (reading != lastButtonState) {
+      lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == LOW) {
+        buttonPressStartTime = millis();
+      } 
+      else 
+      {
+        unsigned long buttonPressDuration = millis() - buttonPressStartTime;
+        if (buttonPressDuration >= resetButtonHoldTime) {
+          // Удержание кнопки в течение 10 секунд - сброс данных
+          EEPROM.put(0, defaultParams);
+          EEPROM.commit();
+          Serial.println("Данные сброшены и записаны заново в EEPROM");
+          resetFlag = true;
+          dateWritten = false;
+        } 
+        else {
+          if (!dateWritten) {
+            // Проверяем, была ли уже записана дата
+            String currentDate = "2023-09-02";//String(dateString); // Замените на фактический код для получения текущей даты
+            String storedDate;
+            EEPROM.get(0, storedDate);
+            if (currentDate != storedDate) {
+              EEPROM.put(0, currentDate);
+              EEPROM.commit();
+              Serial.println("Дата записана в EEPROM: " + currentDate);
+              EEPROM.get(0, storedDate);
+              Serial.println("Текущая дата в EEPROM: " + storedDate);
+              dateWritten = true;
+            } 
+          }
+          else {
+            Serial.println("Дата уже была записана ранее");
+          }
+        }
+        resetFlag = false;
+      }
+    }
+  }
+  lastButtonState = reading;
+// ------------------------------------------------------------ End
+
+
+
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  // display.drawString(100, 0, "10:20");
+
+  if (WiFi.status() != WL_CONNECTED)
+    display.drawString(123, 0, "х");
+  else
+    display.drawString(123, 0, "#");
+
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 0, "Mode: " + String(defaultModes[0].modeName));
+  display.drawLine(50, 18, 105, 18);
+  display.setFont(ArialMT_Plain_10);
+
+// Уапрвлением Нагревателем и Вентилятором
+  if (t>=37.40 && t<37.60) {
+    analogWrite(FunPin, calculateFanSpeed(t*10));
+  }
+  else if (t<37.0){
+    analogWrite(FunPin, calculateFanSpeed(t*10));
+  } 
+  else {
+    analogWrite(FunPin, 0);
+  }
+  display.drawString(0, 20, "T: " + String(t, 1) + "C'" );
+  display.drawString(0, 30, "H: " + String(h, 1) + "%");
+
+  display.drawString(63, 20, "| Fan: " + String(speedFanPercen(t)) + "%" );
+  display.drawString(63, 30, "| Heat :" + String(h, 1) + "%");
+
+// ------------------------------------------------------------ End
+
+  
+
+  // display.drawString(0, 20, "T: 37.50 (" + String(defaultModes[0].min_temp) +"-" + String(defaultModes[0].max_temp)+") on");
+  display.drawString(0, 40, "Days left: " + String(defaultModes[0].days));
+  // display.drawString(0, 40, "Days left: " + addDay(EEPROM.get(0, getStartDate), dateString) + "/" + String(defaultModes[0].days));
+  display.drawString(0, 50, "Start: "+ EEPROM.get(0, getStartDate));
+  display.display();
+}
+
+// Функция для расчета скорости вращения вентилятора на основе температуры
+int calculateFanSpeed(float temperature) {
+  // Ограничиваем температуру в диапазоне minTemp и maxTemp
+  temperature = constrain(temperature, int(defaultModes[0].min_temp*10), int(defaultModes[0].max_temp*10));
+  
+  // Выполняем линейную интерполяцию для получения значения скорости вращения вентилятора
+  int fanSpeed = map(temperature, int(defaultModes[0].min_temp*10), int(defaultModes[0].max_temp*10), 0, 255);
+
+  return fanSpeed;
+}
+
+int speedFanPercen(float temperature) { 
+  int calSpeedPercent= map (calculateFanSpeed(temperature*10), 0, 255, 0, 100); 
+  return calSpeedPercent;
+}
+/*
+String addDay (String startDateStr, String nowDateStr){
+// Разбиваем строку с датой на год, месяц и день
+  int nowYear, nowMonth, nowDay;
+  sscanf(nowDateStr, "%d-%d-%d", &nowYear, &month1, &day1);
+
+  int year, month, day;
+  sscanf(startDateStr, "%d-%d-%d", &year, &month, &day);
+
+  // Вычисляем разницу в годах, месяцах и днях
+  int yearDiff = nowYear - year;
+  int monthDiff = nowMonth - month;
+  int dayDiff = nowDay - day;
+
+  if (dayDiff < 0) {
+    // Если дни отрицательны, корректируем разницу
+    monthDiff--; // Уменьшаем месяц на 1
+
+    // Вычисляем количество дней в предыдущем месяце
+    int daysInPreviousMonth = daysInMonth[month];
+    if (month2 == 2 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))) {
+      // Если февраль и год високосный, то добавляем день
+      daysInPreviousMonth++;
+    }
+
+    dayDiff += daysInPreviousMonth;
+  }
+
+  if (monthDiff < 0) {
+    // Если месяцы отрицательны, корректируем разницу
+    monthDiff += 12; // Уменьшаем год на 1
+    yearDiff--;
+  }
+  return dayDiff;
+}
+*/
