@@ -227,8 +227,8 @@ void loop() {
   
 
   // display.drawString(0, 20, "T: 37.50 (" + String(defaultModes[0].min_temp) +"-" + String(defaultModes[0].max_temp)+") on");
-  display.drawString(0, 40, "Days left: " + String(defaultModes[0].days));
-  // display.drawString(0, 40, "Days left: " + addDay(EEPROM.get(0, getStartDate), dateString) + "/" + String(defaultModes[0].days));
+  // display.drawString(0, 40, "Days left: " + String(defaultModes[0].days));
+  display.drawString(0, 40, "Days left: " + addDay(EEPROM.get(0, getStartDate), dateString)+ "/" + String(defaultModes[0].days));
   display.drawString(0, 50, "Start: "+ EEPROM.get(0, getStartDate));
   display.display();
 }
@@ -248,14 +248,19 @@ int speedFanPercen(float temperature) {
   int calSpeedPercent= map (calculateFanSpeed(temperature*10), 0, 255, 0, 100); 
   return calSpeedPercent;
 }
-/*
-String addDay (String startDateStr, String nowDateStr){
+
+
+
 // Разбиваем строку с датой на год, месяц и день
+String addDay (String startDateStr, String nowDateStr){
+  // char* nowDateChar =  char*(nowDateStr);
+  // char* startDateChar =  char*(startDateStr);
+  
   int nowYear, nowMonth, nowDay;
-  sscanf(nowDateStr, "%d-%d-%d", &nowYear, &month1, &day1);
+  sscanf(nowDateStr.c_str(), "%d-%d-%d", &nowYear, &nowMonth, &nowDay);
 
   int year, month, day;
-  sscanf(startDateStr, "%d-%d-%d", &year, &month, &day);
+  sscanf(startDateStr.c_str(), "%d-%d-%d", &year, &month, &day);
 
   // Вычисляем разницу в годах, месяцах и днях
   int yearDiff = nowYear - year;
@@ -268,7 +273,7 @@ String addDay (String startDateStr, String nowDateStr){
 
     // Вычисляем количество дней в предыдущем месяце
     int daysInPreviousMonth = daysInMonth[month];
-    if (month2 == 2 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))) {
+    if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))) {
       // Если февраль и год високосный, то добавляем день
       daysInPreviousMonth++;
     }
@@ -281,6 +286,6 @@ String addDay (String startDateStr, String nowDateStr){
     monthDiff += 12; // Уменьшаем год на 1
     yearDiff--;
   }
-  return dayDiff;
+  return String (dayDiff);
 }
-*/
+
