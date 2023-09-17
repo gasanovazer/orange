@@ -1,18 +1,19 @@
 #include <Wire.h>
 #include <SSD1306Wire.h>
 #include <NTPClient.h>
-#include <WiFi.h>
+// #include <WiFi.h> //ESP32
+#include <ESP8266WiFi.h> 
 #include <WiFiUdp.h>
 #include <DHT22.h> //DHT22
 #include <EEPROM.h>
 #include <TimeLib.h>
 
-#define fanPin 25 // Fan Pin
-#define heatPin 26 // Heating Pin
-#define motorPin1 17 // Пин 1 для управления мотором с драйвером L293
-#define motorPin2 16 // Пин 2 для управления мотором с драйвером L293
-#define data 5 // pin DHT22 ESP32
-const int buttonPin = 14; // Пин, к которому подключена кнопка
+#define fanPin 12 // Fan Pin
+#define heatPin 14 // Heating Pin
+#define motorPin1 2 // Пин 1 для управления мотором с драйвером L293
+#define motorPin2 0 // Пин 2 для управления мотором с драйвером L293
+#define data 15 // pin DHT22 ESP32
+const int buttonPin = 13; // Пин, к которому подключена кнопка
 
 const unsigned long motorDuration = 5000; // Длительность включения мотора в миллисекундах (5 секунд)
 const unsigned long motorOffInterval = 20000; // Интервал между включениями в миллисекундах (5 часов)
@@ -53,10 +54,10 @@ struct Parameters {
 
 Parameters defaultModes[] = {
     // name | min_temp | max_temp | min_hum_start | min_hum_end | max_hum_start | max_hum_end | days | last_days  
-    {"Chicken", 36.7, 37.5, 40, 50, 65, 75, 21, 3}
+    {"Chicken", 36.5, 38.0, 55, 60, 65, 80, 23, 3}
 };
 
-SSD1306Wire display(0x3c, 32, 33); // OLED-дисплей с адресом 0x3c
+SSD1306Wire display(0x3c, 4, 5); // OLED-дисплей с адресом 0x3c
 
 const char* ssid = "X0GAE";
 const char* password = "uD8E0-2oP";
@@ -195,15 +196,15 @@ void loop() {
       // Уапрвлением Нагревателем и Вентилятором
       if (t>=37.40 && t<=37.50) {
         analogWrite(fanPin, 51);
-        analogWrite(heatPin, 0);
+        analogWrite(heatPin, 76);
         display.drawString(63, 20, "| Fan: 20%" );
-        display.drawString(63, 30, "| Heat: 0%");
+        display.drawString(63, 30, "| Heat: 30%");
       }
-      else if (t>=37.60 && t<=37.70){
+      else if (t>37.50 && t<=37.70){
         analogWrite(fanPin, 204);
-        analogWrite(heatPin, LOW);
+        analogWrite(heatPin, 51);
         display.drawString(63, 20, "| Fan: 80%" );
-        display.drawString(63, 30, "| Heat: 0%");
+        display.drawString(63, 30, "| Heat: 20%");
       } 
       else if (t>=37.80){
         analogWrite(fanPin, 255);
@@ -211,10 +212,10 @@ void loop() {
         display.drawString(63, 20, "| Fan: 100%" );
         display.drawString(63, 30, "| Heat: 0%");
       } 
-      else if (t<37.0){
-        analogWrite(fanPin, 51);
+      else if (t<37.4){
+        analogWrite(fanPin, 0);
         analogWrite(heatPin, 255);
-        display.drawString(63, 20, "| Fan: 20%" );
+        display.drawString(63, 20, "| Fan: 0%" );
         display.drawString(63, 30, "| Heat: 100%");
       } 
       else {
@@ -228,15 +229,15 @@ void loop() {
       // Уапрвлением Нагревателем и Вентилятором Последний этап инкубации
       if (t>=36.60 && t<=36.70) {
         analogWrite(fanPin, 51);
-        analogWrite(heatPin, 0);
+        analogWrite(heatPin, 102);
         display.drawString(63, 20, "| Fan: 20%" );
-        display.drawString(63, 30, "| Heat: 0%");
+        display.drawString(63, 30, "| Heat: 40%");
       }
       else if (t>=36.80 && t<=36.90){
         analogWrite(fanPin, 204);
-        analogWrite(heatPin, LOW);
+        analogWrite(heatPin, 51);
         display.drawString(63, 20, "| Fan: 80%" );
-        display.drawString(63, 30, "| Heat: 0%");
+        display.drawString(63, 30, "| Heat: 20%");
       } 
       else if (t>=37.90){
         analogWrite(fanPin, 255);
@@ -244,7 +245,7 @@ void loop() {
         display.drawString(63, 20, "| Fan: 100%" );
         display.drawString(63, 30, "| Heat: 0%");
       } 
-      else if (t<36.3){
+      else if (t<36.4){
         analogWrite(fanPin, 51);
         analogWrite(heatPin, 255);
         display.drawString(63, 20, "| Fan: 20%" );
@@ -275,8 +276,9 @@ void loop() {
     // display.drawString(0, 20, "T: 37.50 (" + String(defaultModes[0].min_temp) +"-" + String(defaultModes[0].max_temp)+") on");
     // display.drawString(0, 40, "Days left: " + String(defaultModes[0].days));
     display.drawString(0, 40, "Days left: " + passDaysStr + "/" + String(defaultModes[0].days));
-    if (EEPROM.get(0, getStartDate)!="")
-      display.drawString(0, 50, "Start: "+ EEPROM.get(0, getStartDate));
+    if (EEPROM.get(0, getStartDate)!=""){
+      modeInkub=true;
+      display.drawString(0, 50, "Start: "+ EEPROM.get(0, getStartDate));}
     else
       display.drawString(0, 50, "Start: NULL");
     // ...........................................................................................
@@ -433,4 +435,6 @@ String passDay (String startDateStr, String nowDateStr){
 //   }
 // }
 // ------------------------------------------------------------ End
+
+
 
