@@ -54,7 +54,7 @@ struct Parameters {
 
 Parameters defaultModes[] = {
     // name | min_temp | max_temp | min_hum_start | min_hum_end | max_hum_start | max_hum_end | days | last_days  
-    {"Chicken", 36.5, 38.0, 55, 60, 65, 80, 23, 3}
+    {"Chicken", 36.5, 38.0, 55, 75, 60, 80, 21, 3}
 };
 
 SSD1306Wire display(0x3c, 4, 5); // OLED-дисплей с адресом 0x3c
@@ -160,6 +160,10 @@ void loop() {
   display.drawLine(50, 18, 105, 18);
   display.setFont(ArialMT_Plain_10);
 
+  int heatVol;
+  int fanVol;
+  float heatVolPercent;
+  float fanVolPercent;
 
   if (String(dateString).substring(0, 4) != "1970"){
     yearStr = String(dateString).substring(0, 4);
@@ -169,7 +173,7 @@ void loop() {
     String passDaysStr = passDay(EEPROM.get(0, getStartDate), dateString);
     int passDays = passDaysStr.toInt();
 
-    if (passDays < (int(defaultModes[0].days)-int(defaultModes[0].last_days))){
+    if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days))){
       // display.drawString(120, 10, String());
       if (!motorState && (currentMillis - previousMotorMillis >= motorOffInterval)) {
         // Включаем мотор и устанавливаем флаг
@@ -188,86 +192,66 @@ void loop() {
         // Инвертируем направление вращения мотора
         motorDirection = !motorDirection;
       }
-    }
-
+    
 // .........................................................................................
-    if (passDays<=(int(defaultModes[0].days)-int(defaultModes[0].last_days)))
-    {
-      // Уапрвлением Нагревателем и Вентилятором
-      if (t>=37.40 && t<=37.50) {
-        analogWrite(fanPin, 51);
-        analogWrite(heatPin, 76);
-        display.drawString(63, 20, "| Fan: 20%" );
-        display.drawString(63, 30, "| Heat: 30%");
+// 
+      if(t<(defaultModes[0].max_temp-0.5) 
+      {
+        heatVol = 255;
+        fanVol = getFanVol(h, passDays);
       }
-      else if (t>37.50 && t<=37.70){
-        analogWrite(fanPin, 204);
-        analogWrite(heatPin, 51);
-        display.drawString(63, 20, "| Fan: 80%" );
-        display.drawString(63, 30, "| Heat: 20%");
-      } 
-      else if (t>=37.80){
-        analogWrite(fanPin, 255);
-        analogWrite(heatPin, 0);
-        display.drawString(63, 20, "| Fan: 100%" );
-        display.drawString(63, 30, "| Heat: 0%");
-      } 
-      else if (t<37.4){
-        analogWrite(fanPin, 0);
-        analogWrite(heatPin, 255);
-        display.drawString(63, 20, "| Fan: 0%" );
-        display.drawString(63, 30, "| Heat: 100%");
-      } 
+      else if (t>=(defaultModes[0].max_temp-0.5) && t<=defaultModes[0].max_temp) {
+        heatVol = 102;
+        fanVol = getFanVol(h, passDays);
+      }
+      else if (t>(defaultModes[0].max_temp) && t<=defaultModes[0].max_temp+0.5) {
+        heatVol = 0;
+        fanVol = getFanVol(h, passDays);
+      }
+      else if (t>(defaultModes[0].max_temp+0.5)) {
+        heatVol = 0;
+        fanVol = 255;
+      }
       else {
-        analogWrite(fanPin, 0);
-        analogWrite(heatPin, 0);
-        display.drawString(63, 20, "| Fan: ER" );
-        display.drawString(63, 30, "| Heat: ER");
+        heatVol = 0;
+        fanVol = 0;
       }
-    }
+
     else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) {
       // Уапрвлением Нагревателем и Вентилятором Последний этап инкубации
-      if (t>=36.60 && t<=36.70) {
-        analogWrite(fanPin, 51);
-        analogWrite(heatPin, 102);
-        display.drawString(63, 20, "| Fan: 20%" );
-        display.drawString(63, 30, "| Heat: 40%");
+      if(t<(defaultModes[0].min_temp-0.5) 
+      {
+        heatVol = 255;
+        fanVol = getFanVol(h, passDays);
       }
-      else if (t>=36.80 && t<=36.90){
-        analogWrite(fanPin, 204);
-        analogWrite(heatPin, 51);
-        display.drawString(63, 20, "| Fan: 80%" );
-        display.drawString(63, 30, "| Heat: 20%");
-      } 
-      else if (t>=37.90){
-        analogWrite(fanPin, 255);
-        analogWrite(heatPin, 0);
-        display.drawString(63, 20, "| Fan: 100%" );
-        display.drawString(63, 30, "| Heat: 0%");
-      } 
-      else if (t<36.4){
-        analogWrite(fanPin, 51);
-        analogWrite(heatPin, 255);
-        display.drawString(63, 20, "| Fan: 20%" );
-        display.drawString(63, 30, "| Heat: 100%");
-      } 
-      else 
-      { 
-        analogWrite(fanPin, 0);
-        analogWrite(heatPin, 0);
-        display.drawString(63, 20, "| Fan: ER" );
-        display.drawString(63, 30, "| Heat: ER");
+      else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) {
+        heatVol = 102;
+        fanVol = getFanVol(h, passDays);
+      }
+      else if (t>(defaultModes[0].min_temp) && t<=defaultModes[0].min_temp+0.5) {
+        heatVol = 0;
+        fanVol = getFanVol(h, passDays);
+      }
+      else if (t>(defaultModes[0].min_temp+0.5)) {
+        heatVol = 0;
+        fanVol = 255;
+      }
+      else {
+        heatVol = 0;
+        fanVol = 0;
       }
     }
     else if(passDays>int(defaultModes[0].days)) {
-        analogWrite(fanPin, 0);
-        analogWrite(heatPin, 0);
-        display.drawString(63, 20, "| Fan: OFF" );
-        display.drawString(63, 30, "| Heat: OFF");
-        // modeInkub = false;
+      heatVol = 0;
+      fanVol = 0;
     } 
 
-
+    analogWrite(fanPin, fanVol);
+    analogWrite(heatPin, heatVol);
+    fanVolPercent = mapf(fanVol, 0, 255, 0.0, 100.0);
+    heatVolPercent = mapf(heatVol, 0, 255, 0.0, 100.0);
+    display.drawString(63, 30, "| Heat: " + heatVolPercent + "%");
+    display.drawString(63, 20, "| Fan: " + fanVolPercent + "%" );
   // ------------------------------------------------------------ End
 
     
@@ -437,4 +421,25 @@ String passDay (String startDateStr, String nowDateStr){
 // ------------------------------------------------------------ End
 
 
-
+int getFanVol(float h, int passDays){
+  int setFanVol;
+  if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days))){
+    if(h.toInt()<defaultModes[0].min_hum_start-10){
+      setFanVol= 255;
+    }else if(h.toInt()>=defaultModes[0].min_hum_start && h<=defaultModes[0].max_hum_start){
+      setFanVol= 76;
+    }else if(h.toInt()>=defaultModes[0].max_hum_start){
+      setFanVol= 0;
+    }
+  }
+  else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) {
+    if(h.toInt()<defaultModes[0].min_hum_end-10){
+      setFanVol= 255;
+    }else if(h.toInt()>=defaultModes[0].min_hum_end && h<=defaultModes[0].max_hum_end){
+      setFanVol= 76;
+    }else if(h.toInt()>=defaultModes[0].max_hum_end){
+      setFanVol= 0;
+    }
+  }
+  return setFanVol;
+}
