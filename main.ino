@@ -39,7 +39,8 @@ String defaultParams = "";
 String getStartDate = "";
 DHT22 dht22(data); 
 
-struct Parameters {
+struct Parameters 
+{
     String modeName; 
     double min_temp;
     double max_temp;
@@ -52,7 +53,8 @@ struct Parameters {
     String start_date;
 };
 
-Parameters defaultModes[] = {
+Parameters defaultModes[] = 
+{
     // name | min_temp | max_temp | min_hum_start | min_hum_end | max_hum_start | max_hum_end | days | last_days  
     {"Chicken", 36.5, 38.0, 55, 75, 60, 80, 21, 3}
 };
@@ -69,7 +71,8 @@ const int daylightOffset_sec = 3600; // Переход на летнее/зим�
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, ntpServer, gmtOffset_sec, daylightOffset_sec);
 
-void setup() {
+void setup() 
+{
   // put your setup code here, to run once:
   Serial.begin(9600); // Инициализация Serial
   // Инициализация пинов
@@ -92,16 +95,19 @@ void setup() {
 // Save date in EEPROM
   EEPROM.begin(sizeof(String));
   // Записываем параметры в EEPROM только один раз при запуске
-  if (EEPROM.read(0) == 0xFF) {
+  if (EEPROM.read(0) == 0xFF) 
+  {
       EEPROM.put(0, defaultParams);
       EEPROM.commit();
-  } else {
+  } else 
+  {
       dateWritten = true;
   }
   
   // Wi-Fi
   display.drawString (0, 0, "Wi-Fi ");
-  while ( WiFi.status() != WL_CONNECTED ) {
+  while ( WiFi.status() != WL_CONNECTED ) 
+  {
     delay ( 500 );
     Serial.print ( "." );
     display.drawString (i, 0, ".");
@@ -113,7 +119,8 @@ void setup() {
   configTime(14400, 0, "time.windows.com"); // Используем сервер, который предоставляет текущее время и дату
   display.drawString (0, 10, "NTP ");
   // Ожидание получения времени от NTP-сервера
-  while (!time(nullptr)) {
+  while (!time(nullptr)) 
+  {
     delay(1000);
     Serial.println("Ожидание синхронизации времени с NTP...");
     display.drawString (i, 10, ".");
@@ -126,14 +133,15 @@ void setup() {
   display.display();
 }
 
-void loop() {
+void loop() 
+{
   // put your main code here, to run repeatedly:
   // timeClient.update();
   unsigned long currentMillis = millis();
   float t = dht22.getTemperature();
   float h = dht22.getHumidity();
 
-// Вывод времени и даты ------------------------------
+  // Вывод времени и даты ------------------------------
   time_t now = time(nullptr);
   struct tm* timeInfo = localtime(&now);
   String yearStr = "";
@@ -165,7 +173,8 @@ void loop() {
   float heatVolPercent;
   float fanVolPercent;
 
-  if (String(dateString).substring(0, 4) != "1970"){
+  if (String(dateString).substring(0, 4) != "1970")
+  {
     yearStr = String(dateString).substring(0, 4);
     yearShotStr = String(dateString).substring(2, 4);
     mouthStr = String(dateString).substring(5, 7);
@@ -173,16 +182,20 @@ void loop() {
     String passDaysStr = passDay(EEPROM.get(0, getStartDate), dateString);
     int passDays = passDaysStr.toInt();
 
-    if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days))){
+    if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days)))
+    {
       // display.drawString(120, 10, String());
-      if (!motorState && (currentMillis - previousMotorMillis >= motorOffInterval)) {
+      if (!motorState && (currentMillis - previousMotorMillis >= motorOffInterval)) 
+      {
         // Включаем мотор и устанавливаем флаг
         display.drawString(120, 10,  "m");
         digitalWrite(motorPin1, motorDirection ? HIGH : LOW);
         digitalWrite(motorPin2, motorDirection ? LOW : HIGH); // Направление зависит от motorDirection
         motorState = true;
         previousMotorMillis = currentMillis;
-      } else if (motorState && (currentMillis - previousMotorMillis >= motorDuration)) {
+      } 
+      else if (motorState && (currentMillis - previousMotorMillis >= motorDuration)) 
+      {
         // Выключаем мотор и сбрасываем флаг
         digitalWrite(motorPin1, LOW);
         digitalWrite(motorPin2, LOW);
@@ -193,9 +206,9 @@ void loop() {
         motorDirection = !motorDirection;
       }
     
-// .........................................................................................
-// 
-      if(t<(defaultModes[0].max_temp-0.5) 
+      // .........................................................................................
+
+      if(t<(defaultModes[0].max_temp-0.5))
       {
         heatVol = 255;
         fanVol = getFanVol(h, passDays);
@@ -204,7 +217,7 @@ void loop() {
         heatVol = 102;
         fanVol = getFanVol(h, passDays);
       }
-      else if (t>(defaultModes[0].max_temp) && t<=defaultModes[0].max_temp+0.5) {
+      else if (t>(defaultModes[0].max_temp) && t<=(defaultModes[0].max_temp+0.5)) {
         heatVol = 0;
         fanVol = getFanVol(h, passDays);
       }
@@ -216,43 +229,49 @@ void loop() {
         heatVol = 0;
         fanVol = 0;
       }
-
-    else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) {
+    }
+    else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) 
+    {
       // Уапрвлением Нагревателем и Вентилятором Последний этап инкубации
-      if(t<(defaultModes[0].min_temp-0.5) 
+      if(t<(defaultModes[0].min_temp-0.5))
       {
         heatVol = 255;
         fanVol = getFanVol(h, passDays);
       }
-      else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) {
+      else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) 
+      {
         heatVol = 102;
         fanVol = getFanVol(h, passDays);
       }
-      else if (t>(defaultModes[0].min_temp) && t<=defaultModes[0].min_temp+0.5) {
+      else if (t>defaultModes[0].min_temp && t<=(defaultModes[0].min_temp+0.5)) 
+      {
         heatVol = 0;
         fanVol = getFanVol(h, passDays);
       }
-      else if (t>(defaultModes[0].min_temp+0.5)) {
+      else if (t>(defaultModes[0].min_temp+0.5)) 
+      {
         heatVol = 0;
         fanVol = 255;
       }
-      else {
+      else 
+      {
         heatVol = 0;
         fanVol = 0;
       }
     }
-    else if(passDays>int(defaultModes[0].days)) {
+    else if(passDays>int(defaultModes[0].days)) 
+    {
       heatVol = 0;
       fanVol = 0;
     } 
 
     analogWrite(fanPin, fanVol);
     analogWrite(heatPin, heatVol);
-    fanVolPercent = mapf(fanVol, 0, 255, 0.0, 100.0);
-    heatVolPercent = mapf(heatVol, 0, 255, 0.0, 100.0);
-    display.drawString(63, 30, "| Heat: " + heatVolPercent + "%");
-    display.drawString(63, 20, "| Fan: " + fanVolPercent + "%" );
-  // ------------------------------------------------------------ End
+    fanVolPercent = map(fanVol, 0, 255, 0.0, 100.0);
+    heatVolPercent = map(heatVol, 0, 255, 0.0, 100.0);
+    display.drawString(63, 30, "| Heat: " + String(heatVolPercent) + "%");
+    display.drawString(63, 20, "| Fan: " + String(fanVolPercent) + "%" );
+    // ------------------------------------------------------------ End
 
     
 
@@ -260,9 +279,11 @@ void loop() {
     // display.drawString(0, 20, "T: 37.50 (" + String(defaultModes[0].min_temp) +"-" + String(defaultModes[0].max_temp)+") on");
     // display.drawString(0, 40, "Days left: " + String(defaultModes[0].days));
     display.drawString(0, 40, "Days left: " + passDaysStr + "/" + String(defaultModes[0].days));
-    if (EEPROM.get(0, getStartDate)!=""){
+    if (EEPROM.get(0, getStartDate)!="")
+    {
       modeInkub=true;
-      display.drawString(0, 50, "Start: "+ EEPROM.get(0, getStartDate));}
+      display.drawString(0, 50, "Start: "+ EEPROM.get(0, getStartDate));
+    }
     else
       display.drawString(0, 50, "Start: NULL");
     // ...........................................................................................
@@ -274,18 +295,21 @@ void loop() {
     mouthStr = "";
     dayStr = "";
   }
-// ------------------------------------------------------------ End
+  // ------------------------------------------------------------ End
 
-// Работа с кнопкой 
+  // Работа с кнопкой 
   int reading = digitalRead(buttonPin);
-  if (reading != lastButtonState) {
+  if (reading != lastButtonState) 
+  {
     lastDebounceTime = millis();
   }
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != buttonState) {
+  if ((millis() - lastDebounceTime) > debounceDelay) 
+  {
+    if (reading != buttonState) 
+    {
       buttonState = reading;
-
-      if (buttonState == LOW) {
+      if (buttonState == LOW) 
+      {
         buttonPressStartTime = millis();
       } 
       else 
@@ -325,13 +349,12 @@ void loop() {
     }
   }
   lastButtonState = reading;
-// ------------------------------------------------------------ End
-
-
+  // ------------------------------------------------------------ End
 
   display.drawString(0, 20, "T: " + String(t, 1) + "C'" );
   display.drawString(0, 30, "H: " + String(h, 1) + "%");
-  if (modeInkub){
+  if (modeInkub)
+  {
     display.setFont(ArialMT_Plain_16);
     display.drawString(90, 45, "ON");
     display.setFont(ArialMT_Plain_10);
@@ -343,25 +366,6 @@ void loop() {
   }
   display.display();
 }
-
-// Функция для расчета скорости вращения вентилятора на основе температуры
-// int calculateFanSpeed(float temperature) {
-//   // Ограничиваем температуру в диапазоне minTemp и maxTemp
-//   temperature = constrain(temperature, int(defaultModes[0].min_temp*10), int(defaultModes[0].max_temp*10));
-  
-//   // Выполняем линейную интерполяцию для получения значения скорости вращения вентилятора
-//   int fanSpeed = map(temperature, int(defaultModes[0].min_temp*10), int(defaultModes[0].max_temp*10), 0, 255);
-
-//   return fanSpeed;
-// }
-
-// int speedFanPercen(float temperature) { 
-//   int calSpeedPercent= map (calculateFanSpeed(temperature*10), 0, 255, 0, 100); 
-//   return calSpeedPercent;
-// }
-// ------------------------------------------------------------ End
-
-
 
 // Разбиваем строку с датой на год, месяц и день
 String passDay (String startDateStr, String nowDateStr){
@@ -401,43 +405,39 @@ String passDay (String startDateStr, String nowDateStr){
     return String (dayDiff);
   }
   return String ("null");
-
 }
 // ------------------------------------------------------------ End
 
-
-// Управление переварачиванием яиц
-// void controlMotor(bool rotate) {
-//   if (rotate) {
-//     // Повернуть мотор в одну сторону (зависит от подключения мотора к драйверу)
-//     digitalWrite(motorPin1, HIGH);
-//     digitalWrite(motorPin2, LOW);
-//   } else {
-//     // Повернуть мотор в другую сторону (зависит от подключения мотора к драйверу)
-//     digitalWrite(motorPin1, LOW);
-//     digitalWrite(motorPin2, HIGH);
-//   }
-// }
-// ------------------------------------------------------------ End
-
-
-int getFanVol(float h, int passDays){
+int getFanVol(float h, int passDays)
+{
   int setFanVol;
-  if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days))){
-    if(h.toInt()<defaultModes[0].min_hum_start-10){
+  if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days)))
+  {
+    if(int(h)<defaultModes[0].min_hum_start-10)
+    {
       setFanVol= 255;
-    }else if(h.toInt()>=defaultModes[0].min_hum_start && h<=defaultModes[0].max_hum_start){
+    }
+    else if(int(h)>=defaultModes[0].min_hum_start && int(h)<=defaultModes[0].max_hum_start)
+    {
       setFanVol= 76;
-    }else if(h.toInt()>=defaultModes[0].max_hum_start){
+    }
+    else if(int(h)>=defaultModes[0].max_hum_start)
+    {
       setFanVol= 0;
     }
   }
-  else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) {
-    if(h.toInt()<defaultModes[0].min_hum_end-10){
+  else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) 
+  {
+    if(int(h)<defaultModes[0].min_hum_end-10)
+    {
       setFanVol= 255;
-    }else if(h.toInt()>=defaultModes[0].min_hum_end && h<=defaultModes[0].max_hum_end){
+    }
+    else if(int(h)>=defaultModes[0].min_hum_end && int(h)<=defaultModes[0].max_hum_end)
+    {
       setFanVol= 76;
-    }else if(h.toInt()>=defaultModes[0].max_hum_end){
+    }
+    else if(int(h)>=defaultModes[0].max_hum_end)
+    {
       setFanVol= 0;
     }
   }
