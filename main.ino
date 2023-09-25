@@ -7,6 +7,7 @@
 #include <DHT22.h> //DHT22
 #include <EEPROM.h>
 #include <TimeLib.h>
+#include "function.h"
 
 #define fanPin 12 // Fan Pin
 #define heatPin 14 // Heating Pin
@@ -15,13 +16,14 @@
 #define data 15 // pin DHT22 ESP32
 const int buttonPin = 13; // Пин, к которому подключена кнопка
 
-const unsigned long motorDuration = 5000; // Длительность включения мотора в миллисекундах (5 секунд)
+const unsigned long motorDuration = 8000; // Длительность включения мотора в миллисекундах (5 секунд)
 const unsigned long motorOffInterval = 20000; // Интервал между включениями в миллисекундах (5 часов)
 
 unsigned long previousMotorMillis = 0;
 bool motorState = false; // Состояние мотора (включен/выключен)
 bool motorDirection = true; // Направление вращения мотора (true - вперед, false - назад)
 
+int moreDay = 3; // Дополнительный дни для инкубатора.аа
 
 const int debounceDelay = 50; // Задержка для подавления дребезга кнопки
 const int resetButtonHoldTime = 5000; // Время удержания кнопки для сброса (10 секунд)
@@ -38,20 +40,6 @@ bool modeInkub = false;
 String defaultParams = "";
 String getStartDate = "";
 DHT22 dht22(data); 
-
-struct Parameters 
-{
-    String modeName; 
-    double min_temp;
-    double max_temp;
-    int min_hum_start;
-    int min_hum_end;
-    int max_hum_start;
-    int max_hum_end;
-    int days;
-    int last_days;
-    String start_date;
-};
 
 Parameters defaultModes[] = 
 {
@@ -214,7 +202,7 @@ void loop()
         fanVol = getFanVol(h, passDays);
       }
       else if (t>=(defaultModes[0].max_temp-0.5) && t<=defaultModes[0].max_temp) {
-        heatVol = 102;
+        heatVol = 0;
         fanVol = getFanVol(h, passDays);
       }
       else if (t>(defaultModes[0].max_temp) && t<=(defaultModes[0].max_temp+0.5)) {
@@ -223,21 +211,21 @@ void loop()
       }
       else if (t>(defaultModes[0].max_temp+0.5)) {
         heatVol = 0;
-        fanVol = 255;
+        fanVol = 0;
       }
       else {
         heatVol = 0;
         fanVol = 0;
       }
     }
-    else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) {
+    else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=(int(defaultModes[0].days)+moreDay)) {
       // Уапрвлением Нагревателем и Вентилятором Последний этап инкубации
       if(t<(defaultModes[0].min_temp-0.5)){
         heatVol = 255;
         fanVol = getFanVol(h, passDays);
       }
       else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) {
-        heatVol = 102;
+        heatVol = 0;
         fanVol = getFanVol(h, passDays);
       }
       else if (t>defaultModes[0].min_temp && t<=(defaultModes[0].min_temp+0.5)) {
@@ -253,7 +241,7 @@ void loop()
         fanVol = 0;
       }
     }
-    else if(passDays>int(defaultModes[0].days)) {
+    else if(passDays>(int(defaultModes[0].days)+moreDay)) {
       heatVol = 0;
       fanVol = 0;
     } 
@@ -383,20 +371,4 @@ String passDay (String startDateStr, String nowDateStr){
 }
 // ------------------------------------------------------------ End
 
-int getFanVol(float h, int passDays)
-{
-  int setFanVol;
-  if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days)))
-  {
-    if(int(h)<defaultModes[0].min_hum_start-10) setFanVol= 255;
-    else if(int(h)>=defaultModes[0].min_hum_start && int(h)<=defaultModes[0].max_hum_start) setFanVol= 76;
-    else if(int(h)>=defaultModes[0].max_hum_start) setFanVol= 255;
-  }
-  else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) 
-  {
-    if(int(h)<defaultModes[0].min_hum_end-10) setFanVol= 255;
-    else if(int(h)>=defaultModes[0].min_hum_end && int(h)<=defaultModes[0].max_hum_end) setFanVol= 76;
-    else if(int(h)>=defaultModes[0].max_hum_end) setFanVol= 255;
-  }
-  return setFanVol;
-}
+
