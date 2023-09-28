@@ -214,7 +214,7 @@ void loop()
         fanVol = getFanVol(h, passDays);
       }
       else if (t>=(defaultModes[0].max_temp-0.5) && t<=defaultModes[0].max_temp) {
-        heatVol = 102;
+        heatVol = 250;
         fanVol = getFanVol(h, passDays);
       }
       else if (t>(defaultModes[0].max_temp) && t<=(defaultModes[0].max_temp+0.5)) {
@@ -237,7 +237,7 @@ void loop()
         fanVol = getFanVol(h, passDays);
       }
       else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) {
-        heatVol = 102;
+        heatVol = 250;
         fanVol = getFanVol(h, passDays);
       }
       else if (t>defaultModes[0].min_temp && t<=(defaultModes[0].min_temp+0.5)) {
@@ -388,15 +388,19 @@ int getFanVol(float h, int passDays)
   int setFanVol;
   if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days)))
   {
-    if(int(h)<defaultModes[0].min_hum_start-10) setFanVol= 255;
+    if(int(h)<defaultModes[0].min_hum_start-10) setFanVol= 0;
     else if(int(h)>=defaultModes[0].min_hum_start && int(h)<=defaultModes[0].max_hum_start) setFanVol= 76;
-    else if(int(h)>=defaultModes[0].max_hum_start) setFanVol= 255;
+    else if(int(h)>defaultModes[0].max_hum_start && int(h)<=(defaultModes[0].max_hum_start+10)) setFanVol= 150;
+    else if(int(h)>defaultModes[0].max_hum_start+10) setFanVol= 255;
+    else setFanVol= 0;
   }
   else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) 
   {
     if(int(h)<defaultModes[0].min_hum_end-10) setFanVol= 255;
     else if(int(h)>=defaultModes[0].min_hum_end && int(h)<=defaultModes[0].max_hum_end) setFanVol= 76;
-    else if(int(h)>=defaultModes[0].max_hum_end) setFanVol= 255;
+    else if(int(h)>defaultModes[0].max_hum_end && int(h)<=(defaultModes[0].max_hum_end+10)) setFanVol= 150;
+    else if(int(h)>(defaultModes[0].max_hum_end+10)) setFanVol= 255;
+    else setFanVol= 0;
   }
   return setFanVol;
 }
