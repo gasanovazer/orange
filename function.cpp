@@ -1,18 +1,5 @@
 #include "function.h"
 
-struct Parameters 
-{
-    String modeName; 
-    double min_temp;
-    double max_temp;
-    int min_hum_start;
-    int min_hum_end;
-    int max_hum_start;
-    int max_hum_end;
-    int days;
-    int last_days;
-    String start_date;
-};
 
 int getFanVol(float h, int passDays)
 {
@@ -30,4 +17,24 @@ int getFanVol(float h, int passDays)
     else if(int(h)>=defaultModes[0].max_hum_end) setFanVol= 255;
   }
   return setFanVol;
+}
+
+void displayPrint(int displayMode){
+  switch (displayMode)
+  {
+  case 1:
+    /* Режим отображения настроек Setup */
+    break;
+  
+  case 2:
+    /* Режим отражения Настроек */
+    break;
+  case 3:
+    /* Режим оторобажения режима работы. */
+    break;
+  
+  
+  default:
+    break;
+  }
 }

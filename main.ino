@@ -218,30 +218,50 @@ void loop()
         fanVol = 0;
       }
     }
+<<<<<<< HEAD
     else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=(int(defaultModes[0].days)+moreDay)) {
+=======
+    else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) 
+    {
+>>>>>>> parent of 223378d (Оптимизация кода)
       // Уапрвлением Нагревателем и Вентилятором Последний этап инкубации
-      if(t<(defaultModes[0].min_temp-0.5)){
+      if(t<(defaultModes[0].min_temp-0.5))
+      {
         heatVol = 255;
         fanVol = getFanVol(h, passDays);
       }
+<<<<<<< HEAD
       else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) {
         heatVol = 0;
+=======
+      else if (t>=(defaultModes[0].min_temp-0.5) && t<=defaultModes[0].min_temp) 
+      {
+        heatVol = 102;
+>>>>>>> parent of 223378d (Оптимизация кода)
         fanVol = getFanVol(h, passDays);
       }
-      else if (t>defaultModes[0].min_temp && t<=(defaultModes[0].min_temp+0.5)) {
+      else if (t>defaultModes[0].min_temp && t<=(defaultModes[0].min_temp+0.5)) 
+      {
         heatVol = 0;
         fanVol = getFanVol(h, passDays);
       }
-      else if (t>(defaultModes[0].min_temp+0.5)) {
+      else if (t>(defaultModes[0].min_temp+0.5)) 
+      {
         heatVol = 0;
         fanVol = 255;
       }
-      else {
+      else 
+      {
         heatVol = 0;
         fanVol = 0;
       }
     }
+<<<<<<< HEAD
     else if(passDays>(int(defaultModes[0].days)+moreDay)) {
+=======
+    else if(passDays>int(defaultModes[0].days)) 
+    {
+>>>>>>> parent of 223378d (Оптимизация кода)
       heatVol = 0;
       fanVol = 0;
     } 
@@ -250,10 +270,15 @@ void loop()
     analogWrite(heatPin, heatVol);
     fanVolPercent = map(fanVol, 0, 255, 0.0, 100.0);
     heatVolPercent = map(heatVol, 0, 255, 0.0, 100.0);
-    display.drawString(63, 30, "| Heat: " + String(heatVolPercent, 0) + "%");
-    display.drawString(63, 20, "| Fan: " + String(fanVolPercent, 0) + "%" );
+    display.drawString(63, 30, "| Heat: " + String(heatVolPercent) + "%");
+    display.drawString(63, 20, "| Fan: " + String(fanVolPercent) + "%" );
     // ------------------------------------------------------------ End
 
+    
+
+
+    // display.drawString(0, 20, "T: 37.50 (" + String(defaultModes[0].min_temp) +"-" + String(defaultModes[0].max_temp)+") on");
+    // display.drawString(0, 40, "Days left: " + String(defaultModes[0].days));
     display.drawString(0, 40, "Days left: " + passDaysStr + "/" + String(defaultModes[0].days));
     if (EEPROM.get(0, getStartDate)!="")
     {
@@ -284,7 +309,10 @@ void loop()
     if (reading != buttonState) 
     {
       buttonState = reading;
-      if (buttonState == LOW) buttonPressStartTime = millis(); 
+      if (buttonState == LOW) 
+      {
+        buttonPressStartTime = millis();
+      } 
       else 
       {
         unsigned long buttonPressDuration = millis() - buttonPressStartTime;
@@ -313,7 +341,9 @@ void loop()
               modeInkub = true;
             } 
           }
-          else Serial.println("Дата уже была записана ранее");
+          else {
+            Serial.println("Дата уже была записана ранее");
+          }
         }
         resetFlag = false;
       }
@@ -324,9 +354,17 @@ void loop()
 
   display.drawString(0, 20, "T: " + String(t, 1) + "C'" );
   display.drawString(0, 30, "H: " + String(h, 1) + "%");
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(90, 45, modeInkub ? "ON" : "OFF");
-  display.setFont(ArialMT_Plain_10);
+  if (modeInkub)
+  {
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(90, 45, "ON");
+    display.setFont(ArialMT_Plain_10);
+  }
+  else {
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(90, 45, "OFF");
+    display.setFont(ArialMT_Plain_10);
+  }
   display.display();
 }
 
@@ -371,4 +409,42 @@ String passDay (String startDateStr, String nowDateStr){
 }
 // ------------------------------------------------------------ End
 
+<<<<<<< HEAD
 
+=======
+int getFanVol(float h, int passDays)
+{
+  int setFanVol;
+  if (passDays <= (int(defaultModes[0].days)-int(defaultModes[0].last_days)))
+  {
+    if(int(h)<defaultModes[0].min_hum_start-10)
+    {
+      setFanVol= 255;
+    }
+    else if(int(h)>=defaultModes[0].min_hum_start && int(h)<=defaultModes[0].max_hum_start)
+    {
+      setFanVol= 76;
+    }
+    else if(int(h)>=defaultModes[0].max_hum_start)
+    {
+      setFanVol= 0;
+    }
+  }
+  else if(passDays>(int(defaultModes[0].days)-int(defaultModes[0].last_days)) && passDays<=int(defaultModes[0].days)) 
+  {
+    if(int(h)<defaultModes[0].min_hum_end-10)
+    {
+      setFanVol= 255;
+    }
+    else if(int(h)>=defaultModes[0].min_hum_end && int(h)<=defaultModes[0].max_hum_end)
+    {
+      setFanVol= 76;
+    }
+    else if(int(h)>=defaultModes[0].max_hum_end)
+    {
+      setFanVol= 0;
+    }
+  }
+  return setFanVol;
+}
+>>>>>>> parent of 223378d (Оптимизация кода)
