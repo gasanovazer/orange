@@ -8,15 +8,24 @@
 #include <EEPROM.h>
 #include <TimeLib.h>
 
+#include<AccelStepper.h>
+#define HALFSTEP 16  
+#define motorPin1  1 // IN1 на 1-м драйвере ULN2003
+#define motorPin2  16 // IN2 на 1-м драйвере ULN2003
+#define motorPin3  0 // IN3 на 1-м драйвере ULN2003
+#define motorPin4  2 // IN4 на 1-м драйвере ULN2003 
+
+
 #define fanPin 12 // Fan Pin
 #define heatPin 14 // Heating Pin
-#define motorPin1 2 // Пин 1 для управления мотором с драйвером L293
-#define motorPin2 0 // Пин 2 для управления мотором с драйвером L293
 #define data 15 // pin DHT22 ESP32
 const int buttonPin = 13; // Пин, к которому подключена кнопка
-
 const unsigned long motorDuration = 5000; // Длительность включения мотора в миллисекундах (5 секунд)
 const unsigned long motorOffInterval = 20000; // Интервал между включениями в миллисекундах (5 часов)
+unsigned long quantityStepper = 20000; // Колличестов шагов
+unsigned long speedSepper = 500; // Скорость
+
+AccelStepper stepper(HALFSTEP, motorPin1, motorPin3, motorPin2, motorPin4);
 
 unsigned long previousMotorMillis = 0;
 bool motorState = false; // Состояние мотора (включен/выключен)
@@ -78,11 +87,11 @@ void setup()
   // Инициализация пинов
   pinMode(fanPin, OUTPUT);
   pinMode(heatPin, OUTPUT);
-  pinMode(motorPin1, OUTPUT);
-  pinMode(motorPin2, OUTPUT);
   pinMode(buttonPin, INPUT);
-  digitalWrite(motorPin1, LOW);
-  digitalWrite(motorPin2, LOW);
+  
+  stepper.setMaxSpeed(1000);  // Максимальная скорость (шагов в секунду)
+  stepper.setAcceleration(500); // Ускорение (шагов в секунду в квадрате)
+  stepper.setSpeed(speedSepper); // Начальная скорость (шагов в секунду)
 
   display.init(); // Инициализация OLED-дисплея
   display.flipScreenVertically(); // Если нужно развернуть экран
@@ -188,20 +197,24 @@ void loop()
       if (!motorState && (currentMillis - previousMotorMillis >= motorOffInterval)) 
       {
         // Включаем мотор и устанавливаем флаг
-        display.drawString(120, 10,  "m");
-        digitalWrite(motorPin1, motorDirection ? HIGH : LOW);
-        digitalWrite(motorPin2, motorDirection ? LOW : HIGH); // Направление зависит от motorDirection
+        if (motorDirection){
+          stepper.setSpeed(-speedSepper); // Устанавливаем скорость вперед
+          stepper.moveTo(0); // Устанавливаем количество шагов для движения вперед
+          stepper.runToPosition(); // Двигаемся до заданной позиции
+        }
+        else {
+          stepper.setSpeed(speedSepper); // Устанавливаем скорость вперед
+          stepper.moveTo(quantityStepper); // Устанавливаем количество шагов для движения вперед
+          stepper.runToPosition(); // Двигаемся до заданной позиции
+        }
+        
         motorState = true;
         previousMotorMillis = currentMillis;
       } 
-      else if (motorState && (currentMillis - previousMotorMillis >= motorDuration)) 
+      else if (motorState) 
       {
         // Выключаем мотор и сбрасываем флаг
-        digitalWrite(motorPin1, LOW);
-        digitalWrite(motorPin2, LOW);
-        display.drawString(120, 10,  "x");
         motorState = false;
-        
         // Инвертируем направление вращения мотора
         motorDirection = !motorDirection;
       }
@@ -264,6 +277,7 @@ void loop()
     heatVolPercent = map(heatVol, 0, 255, 0.0, 100.0);
     display.drawString(63, 30, "| Heat: " + String(heatVolPercent, 0) + "%");
     display.drawString(63, 20, "| Fan: " + String(fanVolPercent, 0) + "%" );
+    display.drawString(120, 10,  motorDirection ? "<" : ">");
     // ------------------------------------------------------------ End
 
     display.drawString(0, 40, "Days left: " + passDaysStr + "/" + String(defaultModes[0].days));
@@ -403,4 +417,21 @@ int getFanVol(float h, int passDays)
     else setFanVol= 0;
   }
   return setFanVol;
+}
+
+void controlStepper(char* routStepper){
+  switch (condition) {
+  cases "UP":
+    stepper.setSpeed(-speedSepper); // Устанавливаем скорость вперед
+    stepper.moveTo(0); // Устанавливаем количество шагов для движения вперед
+    stepper.runToPosition(); // Двигаемся до заданной позиции
+    braek;
+  cases "DOWN":
+    stepper.setSpeed(speedSepper); // Устанавливаем скорость вперед
+    stepper.moveTo(quantityStepper); // Устанавливаем количество шагов для движения вперед
+    stepper.runToPosition(); // Двигаемся до заданной позиции
+    braek;
+  default:
+    Serial.print(ERROR);
+  }
 }
