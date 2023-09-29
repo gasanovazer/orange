@@ -8,24 +8,23 @@
 #include <EEPROM.h>
 #include <TimeLib.h>
 
-#include<AccelStepper.h>
-#define HALFSTEP 16  
-#define motorPin1  1 // IN1 на 1-м драйвере ULN2003
-#define motorPin2  16 // IN2 на 1-м драйвере ULN2003
-#define motorPin3  0 // IN3 на 1-м драйвере ULN2003
-#define motorPin4  2 // IN4 на 1-м драйвере ULN2003 
-
+#define in1 1
+#define in2 16
+#define in3 0
+#define in4 2
 
 #define fanPin 12 // Fan Pin
 #define heatPin 14 // Heating Pin
 #define data 15 // pin DHT22 ESP32
 const int buttonPin = 13; // Пин, к которому подключена кнопка
 const unsigned long motorDuration = 5000; // Длительность включения мотора в миллисекундах (5 секунд)
-const unsigned long motorOffInterval = 20000; // Интервал между включениями в миллисекундах (5 часов)
-unsigned long quantityStepper = 20000; // Колличестов шагов
-unsigned long speedSepper = 500; // Скорость
+const unsigned long motorOffInterval = 30000; // Интервал между включениями в миллисекундах (5 часов)
 
-AccelStepper stepper(HALFSTEP, motorPin1, motorPin3, motorPin2, motorPin4);
+int dl = 2; // время задержки между импульсами
+// int totalRotations = 0; // счетчик оборотов
+// int quantityRotations = 10; // счетчик оборотов
+unsigned long previousMillis = 0; // переменная для отслеживания времени
+const unsigned long interval = dl; // интервал времени в миллисекундах
 
 unsigned long previousMotorMillis = 0;
 bool motorState = false; // Состояние мотора (включен/выключен)
@@ -89,9 +88,10 @@ void setup()
   pinMode(heatPin, OUTPUT);
   pinMode(buttonPin, INPUT);
   
-  stepper.setMaxSpeed(1000);  // Максимальная скорость (шагов в секунду)
-  stepper.setAcceleration(500); // Ускорение (шагов в секунду в квадрате)
-  stepper.setSpeed(speedSepper); // Начальная скорость (шагов в секунду)
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
 
   display.init(); // Инициализация OLED-дисплея
   display.flipScreenVertically(); // Если нужно развернуть экран
@@ -196,22 +196,11 @@ void loop()
       // display.drawString(120, 10, String());
       if (!motorState && (currentMillis - previousMotorMillis >= motorOffInterval)) 
       {
-        // Включаем мотор и устанавливаем флаг
-        if (motorDirection){
-          stepper.setSpeed(-speedSepper); // Устанавливаем скорость вперед
-          stepper.moveTo(0); // Устанавливаем количество шагов для движения вперед
-          stepper.runToPosition(); // Двигаемся до заданной позиции
-        }
-        else {
-          stepper.setSpeed(speedSepper); // Устанавливаем скорость вперед
-          stepper.moveTo(quantityStepper); // Устанавливаем количество шагов для движения вперед
-          stepper.runToPosition(); // Двигаемся до заданной позиции
-        }
         
         motorState = true;
         previousMotorMillis = currentMillis;
       } 
-      else if (motorState) 
+      else if (motorState && (currentMillis - previousMotorMillis >= motorDuration)) 
       {
         // Выключаем мотор и сбрасываем флаг
         motorState = false;
@@ -270,7 +259,8 @@ void loop()
       heatVol = 0;
       fanVol = 0;
     } 
-
+    
+    controlStepper();
     analogWrite(fanPin, fanVol);
     analogWrite(heatPin, heatVol);
     fanVolPercent = map(fanVol, 0, 255, 0.0, 100.0);
@@ -419,19 +409,88 @@ int getFanVol(float h, int passDays)
   return setFanVol;
 }
 
-void controlStepper(char* routStepper){
-  switch (condition) {
-  cases "UP":
-    stepper.setSpeed(-speedSepper); // Устанавливаем скорость вперед
-    stepper.moveTo(0); // Устанавливаем количество шагов для движения вперед
-    stepper.runToPosition(); // Двигаемся до заданной позиции
-    braek;
-  cases "DOWN":
-    stepper.setSpeed(speedSepper); // Устанавливаем скорость вперед
-    stepper.moveTo(quantityStepper); // Устанавливаем количество шагов для движения вперед
-    stepper.runToPosition(); // Двигаемся до заданной позиции
-    braek;
-  default:
-    Serial.print(ERROR);
+void controlStepper(){
+  unsigned long currentMillis = millis(); // получаем текущее время
+  
+  // Проверяем, прошло ли достаточно времени с момента последнего изменения состояния
+  if (currentMillis - previousMillis >= interval) {
+    // Сохраняем текущее время как время последнего изменения состояния
+    previousMillis = currentMillis;
+    
+    static int state = 0; // статическая переменная для отслеживания текущего состояния
+    
+    if (motorDirection && motorState) {
+      switch (state) {
+        case 0:
+          digitalWrite(in1, HIGH); 
+          digitalWrite(in2, LOW); 
+          digitalWrite(in3, LOW); 
+          digitalWrite(in4, HIGH);
+          break;
+        case 1:
+          digitalWrite(in1, HIGH); 
+          digitalWrite(in2, HIGH); 
+          digitalWrite(in3, LOW); 
+          digitalWrite(in4, LOW);
+          break;
+        case 2:
+          digitalWrite(in1, LOW); 
+          digitalWrite(in2, HIGH); 
+          digitalWrite(in3, HIGH); 
+          digitalWrite(in4, LOW);
+          break;
+        case 3:
+          digitalWrite(in1, LOW); 
+          digitalWrite(in2, LOW); 
+          digitalWrite(in3, HIGH); 
+          digitalWrite(in4, HIGH);
+          break;
+      }
+    } else if (!motorDirection && motorState){
+      switch (state) {
+        case 0:
+          digitalWrite(in1, LOW); 
+          digitalWrite(in2, LOW); 
+          digitalWrite(in3, HIGH); 
+          digitalWrite(in4, HIGH);
+          break;
+        case 1:
+          digitalWrite(in1, LOW); 
+          digitalWrite(in2, HIGH); 
+          digitalWrite(in3, HIGH); 
+          digitalWrite(in4, LOW);
+          break;
+        case 2:
+          digitalWrite(in1, HIGH); 
+          digitalWrite(in2, HIGH); 
+          digitalWrite(in3, LOW); 
+          digitalWrite(in4, LOW);
+          break;
+        case 3:
+          digitalWrite(in1, HIGH); 
+          digitalWrite(in2, LOW); 
+          digitalWrite(in3, LOW); 
+          digitalWrite(in4, HIGH);
+          break;
+      }
+    }
+    
+    // Увеличиваем состояние, чтобы перейти к следующему
+    state++;
+    if (state > 3) {
+      state = 0; // Если достигли последнего состояния, перейдите обратно к первому
+      // totalRotations++;
+    }
+    
+    // После достижения 1000 оборотов останавливаем двигатель
+    // if (totalRotations >= quantityRotations) {
+    //   digitalWrite(in1, LOW); 
+    //   digitalWrite(in2, LOW); 
+    //   digitalWrite(in3, LOW); 
+    //   digitalWrite(in4, LOW);
+    //   totalRotations = 0; // Сбрасываем счетчик
+    //   // motorDirection = false;
+    
+    // }
   }
 }
